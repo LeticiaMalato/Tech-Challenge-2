@@ -147,11 +147,15 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# dados brutos e processados (gerenciados pelo DVC)
 data/raw/
-data/
-*.csv
-*.parquet
+data/processed/
+data/features/
+
+# NÃO ignore arquivos .dvc - eles precisam ir pro Git
+!data/raw.dvc
+!data/processed.dvc
+!*.dvc
 
 # Environments
 .env
