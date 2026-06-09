@@ -148,6 +148,12 @@ activemq-data/
 *.sage.py
 
 # Environments
+data/raw/
+data/
+*.csv
+*.parquet
+
+# Environments
 .env
 .envrc
 .venv
