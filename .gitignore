@@ -147,6 +147,12 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# abra o .gitignore e adicione:
+data/raw/
+data/
+*.csv
+*.parquet
+
 # Environments
 .env
 .envrc
