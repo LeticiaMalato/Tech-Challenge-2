@@ -13,8 +13,8 @@
 #     print(results.to_string(index=False))
 
 import pandas as pd
-from src.models.factory import build_recommender
-from src.models.metrics import evaluate_recommender
+from src.models.baseline.factory import build_recommender
+from src.models.baseline.metrics import evaluate_recommender
 
 train = pd.read_parquet("data/features/train.parquet")
 test  = pd.read_parquet("data/features/test.parquet")
