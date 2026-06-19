@@ -1,37 +1,116 @@
+"""Encoders de IDs categóricos para índices inteiros sequenciais."""
+
+import logging
+
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
+_UNKNOWN_SENTINEL = -1
+
+
 class IdEncoder:
-#mapeia IDs originais (como visitorid e itemid) para índices inteiros sequenciais, que são usados para treinar modelos de recomendação baseados em embeddings. O encoder constrói um vocabulário a partir dos IDs únicos encontrados no conjunto de treino, e fornece métodos para transformar IDs em índices e decodificar índices de volta para os IDs originais. Isso é essencial para garantir que os modelos de recomendação possam trabalhar com dados categóricos de forma eficiente, usando os índices inteiros como entrada para camadas de embedding.
+    """Mapeia IDs originais para índices inteiros sequenciais.
+
+    Usado para converter ``visitorid`` e ``itemid`` em índices compatíveis
+    com camadas de Embedding do PyTorch e operações de indexação numpy.
+    IDs desconhecidos no ``transform`` recebem o sentinel ``-1``.
+
+    Example:
+        >>> enc = IdEncoder()
+        >>> enc.fit(train_df["visitorid"])
+        >>> train_df["user_idx"] = enc.transform(train_df["visitorid"])
+    """
 
     def __init__(self) -> None:
+        """Inicializa o encoder com vocabulário vazio."""
         self._id_to_index: dict[int, int] = {}
         self._index_to_id: list[int] = []
 
-    def fit(self, ids: pd.Series) -> None:
-#Constrói o mapeamento a partir dos IDs únicos da série.
+    def fit(self, ids: pd.Series) ->  "IdEncoder":
+        """Constrói o vocabulário a partir dos IDs únicos da série.
+
+        Args:
+            ids: Série de IDs inteiros (ex: ``train["visitorid"]``).
+
+        Returns:
+            A própria instância, permitindo encadeamento (ex:
+            ``IdEncoder().fit(ids).transform(ids)``).
+        """
         unique_ids = sorted(ids.unique().tolist())
         self._index_to_id = unique_ids
         self._id_to_index = {id_: i for i, id_ in enumerate(unique_ids)}
+        return self
 
     def transform(self, ids: pd.Series) -> pd.Series:
-#Converte IDs originais para índices inteiros
-        return ids.map(self._id_to_index)
+        """Converte IDs originais em índices inteiros.
+
+        IDs fora do vocabulário são mapeados para ``-1`` com aviso de log.
+
+        Args:
+            ids: Série de IDs a converter.
+
+        Returns:
+            Série de índices inteiros. IDs desconhecidos retornam ``-1``.
+        """
+        transformed = ids.map(self._id_to_index)
+        n_unknown = transformed.isna().sum()
+        if n_unknown > 0:
+            logger.warning(
+                "%d IDs fora do vocabulário encontrados; mapeados para %d.",
+                n_unknown,
+                _UNKNOWN_SENTINEL,
+            )
+        return transformed.fillna(_UNKNOWN_SENTINEL).astype(int)
 
     def decode(self, index: int) -> int:
-#Converte um índice de volta para o ID original.
+        """Converte um índice de volta ao ID original.
+
+        Args:
+            index: Índice inteiro dentro do vocabulário.
+
+        Returns:
+            ID original correspondente ao índice.
+
+        Raises:
+            IndexError: Se ``index`` estiver fora dos limites do vocabulário.
+        """
         return self._index_to_id[index]
 
     @property
     def vocab_size(self) -> int:
-#Número de IDs únicos — usado para definir o tamanho do Embedding.
+        """Número de IDs únicos no vocabulário.
+
+        Usado para definir o tamanho da camada ``nn.Embedding`` no PyTorch.
+        """
         return len(self._index_to_id)
+
+    def __repr__(self) -> str:
+        """Representação legível do encoder."""
+        return f"IdEncoder(vocab_size={self.vocab_size})"
 
 
 def encode_interactions(
     train: pd.DataFrame,
     test: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, IdEncoder, IdEncoder]:
-#Ajusta os IDs de usuário e item para índices inteiros usando IdEncoder. A função recebe os DataFrames de treino e teste, cria encoders para os IDs de usuário e item com base no conjunto de treino, e transforma os IDs originais em índices inteiros. O resultado é uma tupla contendo os DataFrames de treino e teste com as colunas "user_idx" e "item_idx" substituindo "visitorid" e "itemid", respectivamente, além dos encoders usados para a transformação. Isso prepara os dados para serem usados em modelos de recomendação que exigem entradas numéricas.
+    """Codifica IDs de usuário e item em índices inteiros nos dois splits.
+
+    Ajusta os encoders exclusivamente sobre o treino e aplica a transformação
+    em ambos. Adiciona colunas ``user_idx`` e ``item_idx`` preservando as
+    colunas originais. IDs do teste ausentes no treino recebem índice ``-1``.
+
+    Args:
+        train: DataFrame de treino com colunas ``visitorid`` e ``itemid``.
+        test: DataFrame de teste com colunas ``visitorid`` e ``itemid``.
+
+    Returns:
+        Tupla com:
+        - DataFrame de treino com ``user_idx`` e ``item_idx``;
+        - DataFrame de teste com ``user_idx`` e ``item_idx``;
+        - ``IdEncoder`` ajustado para ``visitorid``;
+        - ``IdEncoder`` ajustado para ``itemid``.
+    """
     user_enc = IdEncoder()
     item_enc = IdEncoder()
 

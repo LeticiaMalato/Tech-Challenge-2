@@ -1,77 +1,94 @@
+"""Recomendador baseado em similaridade de cosseno entre itens."""
+
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 
 from src.models.baseline.base import Recommender
-
-
-def _build_item_user_matrix(
-    interactions: pd.DataFrame,
-) -> tuple[csr_matrix, list[int], dict[int, int]]:
-#Constrói a matriz esparsa item × usuário ponderada pelo weight. Retorna a matriz, lista de IDs originais e dicionário de mapeamento ID → índice para itens.
-    item_ids = interactions["itemid"].unique().tolist()
-    user_ids = interactions["visitorid"].unique().tolist()
-
-    item_index = {item: i for i, item in enumerate(item_ids)}
-    user_index = {user: i for i, user in enumerate(user_ids)}
-
-    rows = interactions["itemid"].map(item_index)
-    cols = interactions["visitorid"].map(user_index)
-    data = interactions["weight"].astype(float)
-
-    matrix = csr_matrix(
-        (data, (rows, cols)),
-        shape=(len(item_ids), len(user_ids)),
-    )
-    return matrix, item_ids, item_index
+from src.utils.sparse_utils import build_item_user_matrix
 
 
 class ItemKNNRecommender(Recommender):
-# Recomenda itens usando similaridade de cosseno entre vetores de interação item × usuário. O modelo calcula a similaridade entre itens com base nas interações dos usuários, e recomenda itens similares àqueles que o usuário já interagiu. A recomendação é feita sob demanda, calculando a similaridade apenas para os itens do histórico do usuário, o que torna o processo eficiente mesmo sem pré-computar uma matriz completa de similaridade item × item. O método recommend retorna os top-k itens recomendados, filtrando aqueles que o usuário já viu.
+    """Recomenda itens por similaridade de cosseno item×usuário.
 
-    def __init__(self, top_n_neighbors: int = 20) -> None:
+    Para viabilizar o uso em datasets grandes, a matriz item×usuário é
+    construída sobre uma amostra dos usuários mais ativos, controlada por
+    ``max_users``. A similaridade é calculada sob demanda por item visto,
+    evitando alocar a matriz completa n_items×n_items em memória.
+    """
+
+    def __init__(self, top_n_neighbors: int = 20, max_users: int = 5000) -> None:
+        """Inicializa o recomendador KNN de itens.
+
+        Args:
+            top_n_neighbors: Número de vizinhos considerados por item visto.
+            max_users: Número máximo de usuários usados para construir a
+                matriz item×usuário. Mantém os mais ativos por contagem
+                de interações.
+        """
         self._top_n_neighbors = top_n_neighbors
+        self._max_users = max_users
         self._item_ids: list[int] = []
         self._item_index: dict[int, int] = {}
-        self._matrix: csr_matrix = csr_matrix((0, 0))
+        self._matrix: object = None
         self._interactions: pd.DataFrame = pd.DataFrame()
 
-    def fit(self, interactions: pd.DataFrame) -> None:
-        """Guarda a matriz esparsa — similaridade calculada sob demanda."""
+    def fit(self, interactions: pd.DataFrame) -> "ItemKNNRecommender":
+        """Armazena a matriz item×usuário amostrada para uso no recommend.
+
+        Args:
+            interactions: DataFrame com colunas ``visitorid``, ``itemid``
+                e ``weight``.
+        """
         self._interactions = interactions.copy()
-        self._matrix, self._item_ids, self._item_index = (
-            _build_item_user_matrix(interactions)
+
+        # mantém apenas os usuários mais ativos para reduzir memória
+        top_users = (
+            interactions["visitorid"]
+            .value_counts()
+            .head(self._max_users)
+            .index
         )
+        sampled = interactions[interactions["visitorid"].isin(top_users)]
 
+        self._matrix, self._item_ids, self._item_index = build_item_user_matrix(sampled)
+
+        return self
+    
+    def _score_items(self, user_events: pd.DataFrame) -> np.ndarray:
+        seen_mask = user_events["itemid"].isin(self._item_index)
+        valid_events = user_events[seen_mask]
+
+        if valid_events.empty:
+            return np.zeros(len(self._item_ids))
+
+        seen_indices = [self._item_index[iid] for iid in valid_events["itemid"]]
+        weights = valid_events["weight"].to_numpy(dtype=float)
+
+        # uma única chamada: (n_seen, n_items) — muito mais eficiente
+        sim_matrix = cosine_similarity(
+            self._matrix[seen_indices], self._matrix
+        )
+        scores = (sim_matrix * weights[:, None]).sum(axis=0)
+        scores[seen_indices] = -np.inf  # garante que itens vistos não sejam recomendados
+        return scores
+
+    
     def recommend(self, user_id: int, k: int) -> list[int]:
-# Calcula pontuações preditas para um usuário específico e retorna os top-k itens recomendados, filtrando aqueles que o usuário já interagiu. O método recupera as interações do usuário, calcula a similaridade de cosseno entre os
-        user_events = self._interactions[
-            self._interactions["visitorid"] == user_id
-        ]
+        """Retorna os k itens com maior score de similaridade agregado.
 
+        Args:
+            user_id: Identificador do usuário.
+            k: Número máximo de recomendações.
+
+        Returns:
+            Lista de item_ids ordenados por score descendente.
+            Retorna lista vazia se o usuário não possui interações.
+        """
+        user_events = self._interactions[self._interactions["visitorid"] == user_id]
         if user_events.empty:
             return []
-
-        already_seen = set()
-        scores = np.zeros(len(self._item_ids))
-
-        for _, row in user_events.iterrows():
-            item_id = row["itemid"]
-            if item_id not in self._item_index:
-                continue
-
-            hist_index = self._item_index[item_id]
-            already_seen.add(hist_index)
-
-            # calcula similaridade só desse item contra todos — O(n_items)
-            # em vez de montar a matriz n_items × n_items inteira
-            hist_vector = self._matrix[hist_index]
-            sims = cosine_similarity(hist_vector, self._matrix).flatten()
-            scores += sims * float(row["weight"])
-
-        for seen_index in already_seen:
-            scores[seen_index] = 0.0
-
+        scores = self._score_items(user_events)
         top_indices = np.argsort(scores)[::-1][:k]
         return [self._item_ids[i] for i in top_indices]
+        

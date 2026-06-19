@@ -5,27 +5,27 @@ from src.models.baseline.item_knn_recommender import ItemKNNRecommender
 from src.models.baseline.logistic_recommender import LogisticRecommender
 from src.models.baseline.popularity_recommender import PopularityRecommender
 from src.models.baseline.svd_recommender import SVDRecommender
-from src.models.neural.recommender import MLPRecommender
+from src.models.neural.recommender import MLPConfig, MLPRecommender
 
 _REGISTRY: dict[str, type[Recommender]] = {
     "popularity": PopularityRecommender,
     "item_knn":   ItemKNNRecommender,
     "svd":        SVDRecommender,
     "logistic":   LogisticRecommender,
-    "mlp":        MLPRecommender,  
+    "mlp":        MLPRecommender,
 }
 
 
-
-def build_recommender(name: str, **kwargs: object) -> Recommender:
+def build_recommender(name: str, **kwargs) -> Recommender:
     """Instancia um recomendador pelo nome registrado.
 
     Implementa o padrão Factory: o chamador não precisa conhecer a classe
     concreta, apenas o nome e os hiperparâmetros desejados.
 
     Args:
-        name: Chave do recomendador no registro (ex: ``"svd"``).
+        name: Chave do recomendador no registro (ex: ``"mlp"``).
         **kwargs: Hiperparâmetros repassados ao construtor da classe.
+            Para ``"mlp"``, aceita ``config: MLPConfig`` e ``checkpoint_dir: Path``.
 
     Returns:
         Instância do recomendador solicitado.
@@ -34,7 +34,8 @@ def build_recommender(name: str, **kwargs: object) -> Recommender:
         KeyError: Se ``name`` não estiver no registro.
 
     Example:
-        >>> rec = build_recommender("svd", n_components=64, seed=0)
+        >>> cfg = MLPConfig(embed_dim=128, max_epochs=30)
+        >>> rec = build_recommender("mlp", config=cfg)
         >>> rec.fit(train_df)
     """
     if name not in _REGISTRY:
