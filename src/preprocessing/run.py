@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.config import settings
 from src.preprocessing.factory import build_preprocessor
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
@@ -61,8 +62,8 @@ def main() -> None:
     """CLI: python -m src.preprocessing.run --source events."""
     parser = argparse.ArgumentParser(description="Stage de pré-processamento")
     parser.add_argument("--source", required=True, choices=list(_RAW_FILES))
-    parser.add_argument("--raw-dir", type=Path, default=Path("data/raw"))
-    parser.add_argument("--out-dir", type=Path, default=Path("data/processed"))
+    parser.add_argument("--raw-dir", type=Path, default=settings.raw_data_dir)
+    parser.add_argument("--out-dir", type=Path, default=settings.processed_data_dir)
     args = parser.parse_args()
     run(args.source, args.raw_dir, args.out_dir)
 
