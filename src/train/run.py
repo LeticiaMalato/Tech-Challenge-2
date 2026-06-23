@@ -58,9 +58,9 @@ MLP_CONFIG = MLPConfig(
 )
 
 
-# ---------------------------------------------------------------------------
+
 # I/O
-# ---------------------------------------------------------------------------
+
 
 def load_data(
     train_path: Path = _TRAIN_PATH,
@@ -84,9 +84,9 @@ def load_data(
     return pd.read_parquet(train_path), pd.read_parquet(test_path)
 
 
-# ---------------------------------------------------------------------------
+
 # Preparação de dados — compartilhada entre TODOS os modelos
-# ---------------------------------------------------------------------------
+
 
 def _build_train_with_full_coverage(
     train: pd.DataFrame,
@@ -167,9 +167,9 @@ def _sample_test_users(test: pd.DataFrame, max_test_users: int) -> pd.DataFrame:
     return test[test["visitorid"].isin(sample_users)]
 
 
-# ---------------------------------------------------------------------------
+
 # Wrapper genérico para registro de qualquer Recommender no MLflow
-# ---------------------------------------------------------------------------
+
 
 class RecommenderPyfuncWrapper(mlflow.pyfunc.PythonModel):
     """Adapta qualquer ``Recommender`` para o formato pyfunc do MLflow.
@@ -228,25 +228,27 @@ def _log_model(recommender: Recommender, artifact_path: str = "model") -> None:
     )
 
 
-# ---------------------------------------------------------------------------
+
 # Apresentação e tracking de resultados
-# ---------------------------------------------------------------------------
+
 
 def _log_results(name: str, results: pd.DataFrame) -> None:
-    """Loga os resultados de avaliação formatados no console.
+    """Imprime os resultados de avaliação formatados no console.
+
+    Usa print() em vez de logger.info() porque o MLflow, ao inicializar
+    o backend SQLite via Alembic, desabilita loggers pré-existentes
+    (fileConfig com disable_existing_loggers=True) — o que silenciaria
+    esta saída se dependesse do logger da aplicação.
 
     Args:
         name: Nome do modelo avaliado.
         results: DataFrame com métricas por valor de k.
     """
     separator = "=" * 60
-    logger.info(
-        "\n%s\n  %s\n%s\n%s",
-        separator,
-        name.upper(),
-        separator,
-        results.to_string(index=False),
-    )
+    print(f"\n{separator}")
+    print(f"  {name.upper()}")
+    print(separator)
+    print(results.to_string(index=False))
 
 
 def _log_metrics_to_mlflow(results: pd.DataFrame) -> None:
@@ -298,9 +300,9 @@ def _ndcg_at_selection_k(results: pd.DataFrame, k: int = _SELECTION_K) -> float:
     return float(row["ndcg"].iloc[0])
 
 
-# ---------------------------------------------------------------------------
+
 # Execução de baselines
-# ---------------------------------------------------------------------------
+
 
 def run_baseline(
     name: str,
@@ -353,9 +355,9 @@ def run_baseline(
         return results, run.info.run_id
 
 
-# ---------------------------------------------------------------------------
+
 # Execução do modelo neural
-# ---------------------------------------------------------------------------
+
 
 def run_mlp(
     train_full: pd.DataFrame,
@@ -393,9 +395,10 @@ def run_mlp(
         )
 
         def log_epoch(epoch: int, train_loss: float, val_loss: float) -> None:
-            """Registra as losses da epoch no run ativo do MLflow."""
+            """Registra as losses da epoch no MLflow e imprime no terminal."""
             mlflow.log_metric("train_loss", train_loss, step=epoch)
             mlflow.log_metric("val_loss", val_loss, step=epoch)
+            print(f"Epoch {epoch:3d} | train_loss={train_loss:.4f} | val_loss={val_loss:.4f}")
 
         recommender = build_recommender("mlp", config=MLP_CONFIG, checkpoint_dir=_CHECKPOINT_DIR)
         recommender.fit(train_full, epoch_callback=log_epoch)
@@ -408,9 +411,9 @@ def run_mlp(
         return results, run.info.run_id
 
 
-# ---------------------------------------------------------------------------
+
 # Model Registry
-# ---------------------------------------------------------------------------
+
 
 def register_best_model(
     run_id: str,
@@ -464,6 +467,13 @@ def main() -> None:
     set_global_seed(42)
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
     mlflow.set_experiment(_MLFLOW_EXPERIMENT)
+
+    # Reforça o logger após a inicialização do MLflow/Alembic: a primeira
+    # vez que o backend SQLite é usado, o Alembic carrega sua própria
+    # configuração de logging com disable_existing_loggers=True, o que
+    # desabilita silenciosamente loggers já existentes — incluindo este.
+    logger.disabled = False
+    logger.setLevel(logging.INFO)
 
     train, test = load_data()
 
