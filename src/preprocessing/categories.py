@@ -1,4 +1,5 @@
 """Pré-processamento do dataset de categorias."""
+
 import pandas as pd
 
 from src.preprocessing.base import Preprocessor

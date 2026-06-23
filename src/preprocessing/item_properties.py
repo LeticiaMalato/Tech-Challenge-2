@@ -1,8 +1,9 @@
 """Pré-processamento do dataset de propriedades de itens."""
+
 import pandas as pd
 
 from src.preprocessing.base import Preprocessor
-from src.utils.utils import to_datetime_utc 
+from src.utils.utils import to_datetime_utc
 
 LEGIBLE_PROPERTIES: tuple[str, ...] = ("categoryid", "available")
 

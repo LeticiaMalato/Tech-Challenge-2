@@ -12,7 +12,6 @@ registrado no MLflow Model Registry e promovido a Production.
 """
 
 import logging
-import os
 from pathlib import Path
 
 import mlflow
@@ -23,7 +22,7 @@ from mlflow import MlflowClient
 from src.models.baseline.base import Recommender
 from src.models.baseline.factory import build_recommender, list_available_recommenders
 from src.models.baseline.metrics import compare_models_metrics, evaluate_recommender
-from src.models.neural.recommender import MLPConfig, MLPRecommender
+from src.models.neural.recommender import MLPConfig
 from src.utils.seed import set_global_seed
 
 logging.basicConfig(
@@ -33,8 +32,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _TRAIN_PATH = Path("data/features/train.parquet")
-_TEST_PATH  = Path("data/features/test.parquet")
-_K_VALUES   = [5, 10, 20]
+_TEST_PATH = Path("data/features/test.parquet")
+_K_VALUES = [5, 10, 20]
 _SELECTION_K = 10  # critério de seleção do melhor modelo para o Registry
 _MIN_INTERACTIONS = 3
 _CHECKPOINT_DIR = Path("models/checkpoints/mlp")
@@ -58,13 +57,12 @@ MLP_CONFIG = MLPConfig(
 )
 
 
-
 # I/O
 
 
 def load_data(
     train_path: Path = _TRAIN_PATH,
-    test_path: Path  = _TEST_PATH,
+    test_path: Path = _TEST_PATH,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Carrega os conjuntos de treino e teste em formato Parquet.
 
@@ -82,7 +80,6 @@ def load_data(
         if not path.exists():
             raise FileNotFoundError(f"Arquivo não encontrado: {path}")
     return pd.read_parquet(train_path), pd.read_parquet(test_path)
-
 
 
 # Preparação de dados — compartilhada entre TODOS os modelos
@@ -126,7 +123,9 @@ def _build_train_with_full_coverage(
     return result
 
 
-def _filter_test_to_known_users(test: pd.DataFrame, train: pd.DataFrame) -> pd.DataFrame:
+def _filter_test_to_known_users(
+    test: pd.DataFrame, train: pd.DataFrame
+) -> pd.DataFrame:
     """Filtra o teste para usuários presentes no treino fornecido.
 
     Args:
@@ -159,13 +158,8 @@ def _sample_test_users(test: pd.DataFrame, max_test_users: int) -> pd.DataFrame:
         DataFrame filtrado com os usuários amostrados.
     """
     n = min(max_test_users, test["visitorid"].nunique())
-    sample_users = (
-        test["visitorid"]
-        .drop_duplicates()
-        .sample(n=n, random_state=42)
-    )
+    sample_users = test["visitorid"].drop_duplicates().sample(n=n, random_state=42)
     return test[test["visitorid"].isin(sample_users)]
-
 
 
 # Wrapper genérico para registro de qualquer Recommender no MLflow
@@ -226,7 +220,6 @@ def _log_model(recommender: Recommender, artifact_path: str = "model") -> None:
         python_model=RecommenderPyfuncWrapper(recommender),
         input_example=sample_input,
     )
-
 
 
 # Apresentação e tracking de resultados
@@ -296,9 +289,10 @@ def _ndcg_at_selection_k(results: pd.DataFrame, k: int = _SELECTION_K) -> float:
     """
     row = results[results["k"] == k]
     if row.empty:
-        raise ValueError(f"k={k} não encontrado nos resultados: {results['k'].tolist()}")
+        raise ValueError(
+            f"k={k} não encontrado nos resultados: {results['k'].tolist()}"
+        )
     return float(row["ndcg"].iloc[0])
-
 
 
 # Execução de baselines
@@ -355,7 +349,6 @@ def run_baseline(
         return results, run.info.run_id
 
 
-
 # Execução do modelo neural
 
 
@@ -398,9 +391,13 @@ def run_mlp(
             """Registra as losses da epoch no MLflow e imprime no terminal."""
             mlflow.log_metric("train_loss", train_loss, step=epoch)
             mlflow.log_metric("val_loss", val_loss, step=epoch)
-            print(f"Epoch {epoch:3d} | train_loss={train_loss:.4f} | val_loss={val_loss:.4f}")
+            print(
+                f"Epoch {epoch:3d} | train_loss={train_loss:.4f} | val_loss={val_loss:.4f}"
+            )
 
-        recommender = build_recommender("mlp", config=MLP_CONFIG, checkpoint_dir=_CHECKPOINT_DIR)
+        recommender = build_recommender(
+            "mlp", config=MLP_CONFIG, checkpoint_dir=_CHECKPOINT_DIR
+        )
         recommender.fit(train_full, epoch_callback=log_epoch)
         _log_model(recommender)
         mlflow.log_artifact(str(recommender.checkpoint_path))
@@ -409,7 +406,6 @@ def run_mlp(
         _log_results("mlp", results)
         _log_metrics_to_mlflow(results)
         return results, run.info.run_id
-
 
 
 # Model Registry
@@ -452,7 +448,9 @@ def register_best_model(
     )
     logger.info(
         "Modelo '%s' v%s promovido a Production (run_id=%s).",
-        model_name, result.version, run_id,
+        model_name,
+        result.version,
+        run_id,
     )
     return result.version
 
@@ -483,10 +481,10 @@ def main() -> None:
     k_values = _K_VALUES
 
     baselines: list[tuple[str, dict, int | None]] = [
-        ("popularity", {},                                                   None),
-        ("item_knn",   {"top_n_neighbors": 20, "max_users": 5_000},          None),
-        ("svd",        {"n_components": 50, "seed": 42},                     None),
-        ("logistic",   {"neg_ratio": 3, "seed": 42, "max_positives": 20_000}, None),
+        ("popularity", {}, None),
+        ("item_knn", {"top_n_neighbors": 20, "max_users": 5_000}, None),
+        ("svd", {"n_components": 50, "seed": 42}, None),
+        ("logistic", {"neg_ratio": 3, "seed": 42, "max_positives": 20_000}, None),
     ]
 
     logger.info(
@@ -500,7 +498,10 @@ def main() -> None:
 
     for name, params, max_test_users in baselines:
         baseline_results, run_id = run_baseline(
-            name, train_full, test_eval, k_values,
+            name,
+            train_full,
+            test_eval,
+            k_values,
             max_test_users=max_test_users,
             **params,
         )
@@ -518,15 +519,22 @@ def main() -> None:
     best_name, best_run_id, best_ndcg = max(candidates, key=lambda c: c[2])
     logger.info(
         "Melhor modelo: %s | ndcg@%d=%.4f | run_id=%s",
-        best_name, _SELECTION_K, best_ndcg, best_run_id,
+        best_name,
+        _SELECTION_K,
+        best_ndcg,
+        best_run_id,
     )
     version = register_best_model(run_id=best_run_id, model_name=_MODEL_REGISTRY_NAME)
     logger.info(
         "Registry: '%s' v%s (Production) ← modelo '%s'.",
-        _MODEL_REGISTRY_NAME, version, best_name,
+        _MODEL_REGISTRY_NAME,
+        version,
+        best_name,
     )
 
-    logger.info("Avaliação concluída. Execute 'mlflow ui' para visualizar os experimentos.")
+    logger.info(
+        "Avaliação concluída. Execute 'mlflow ui' para visualizar os experimentos."
+    )
 
 
 if __name__ == "__main__":

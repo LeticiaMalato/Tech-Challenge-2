@@ -27,8 +27,8 @@ class MatrixFactorizationNet(nn.Module):
             embed_dim: Dimensão dos vetores de embedding latente.
         """
         super().__init__()
-        self.user_emb  = nn.Embedding(n_users, embed_dim)
-        self.item_emb  = nn.Embedding(n_items, embed_dim)
+        self.user_emb = nn.Embedding(n_users, embed_dim)
+        self.item_emb = nn.Embedding(n_items, embed_dim)
         self.user_bias = nn.Embedding(n_users, 1)
         self.item_bias = nn.Embedding(n_items, 1)
 
@@ -47,8 +47,8 @@ class MatrixFactorizationNet(nn.Module):
         Returns:
             Logits de shape (batch,) sem sigmoid aplicado.
         """
-        u  = self.user_emb(user_idx)
-        i  = self.item_emb(item_idx)
+        u = self.user_emb(user_idx)
+        i = self.item_emb(item_idx)
         bu = self.user_bias(user_idx).squeeze(-1)
         bi = self.item_bias(item_idx).squeeze(-1)
         return (u * i).sum(dim=-1) + bu + bi

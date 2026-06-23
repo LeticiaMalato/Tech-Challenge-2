@@ -17,8 +17,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _TRAIN_PATH = Path("data/features/train.parquet")
-_TEST_PATH  = Path("data/features/test.parquet")
-_K_VALUES   = [5, 10, 20]
+_TEST_PATH = Path("data/features/test.parquet")
+_K_VALUES = [5, 10, 20]
 _CHECKPOINT_DIR = Path("models/checkpoints/mlp")
 
 # Configuração do MLP, validada empiricamente via varredura de
@@ -42,9 +42,10 @@ MLP_CONFIG = MLPConfig(
 # I/O
 # ---------------------------------------------------------------------------
 
+
 def load_data(
     train_path: Path = _TRAIN_PATH,
-    test_path: Path  = _TEST_PATH,
+    test_path: Path = _TEST_PATH,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Carrega os conjuntos de treino e teste em formato Parquet.
 
@@ -68,6 +69,7 @@ def load_data(
 # Amostragem
 # ---------------------------------------------------------------------------
 
+
 def _sample_test_users(test: pd.DataFrame, max_test_users: int) -> pd.DataFrame:
     """Amostra um subconjunto de usuários do conjunto de teste.
 
@@ -79,11 +81,7 @@ def _sample_test_users(test: pd.DataFrame, max_test_users: int) -> pd.DataFrame:
         DataFrame filtrado com os usuários amostrados.
     """
     n = min(max_test_users, test["visitorid"].nunique())
-    sample_users = (
-        test["visitorid"]
-        .drop_duplicates()
-        .sample(n=n, random_state=42)
-    )
+    sample_users = test["visitorid"].drop_duplicates().sample(n=n, random_state=42)
     return test[test["visitorid"].isin(sample_users)]
 
 
@@ -133,6 +131,7 @@ def _build_train_with_full_coverage(
 # Apresentação de resultados
 # ---------------------------------------------------------------------------
 
+
 def _log_results(name: str, results: pd.DataFrame) -> None:
     """Loga os resultados de avaliação formatados.
 
@@ -153,6 +152,7 @@ def _log_results(name: str, results: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 # Execução de baselines
 # ---------------------------------------------------------------------------
+
 
 def run_baseline(
     name: str,
@@ -196,6 +196,7 @@ def run_baseline(
 # ---------------------------------------------------------------------------
 # Execução do modelo neural
 # ---------------------------------------------------------------------------
+
 
 def run_mlp(
     train: pd.DataFrame,
@@ -242,7 +243,9 @@ def run_mlp(
     )
 
     if test_eval.empty:
-        logger.warning("Nenhum usuário do teste sobreviveu ao filtro. Abortando avaliação MLP.")
+        logger.warning(
+            "Nenhum usuário do teste sobreviveu ao filtro. Abortando avaliação MLP."
+        )
         return None
 
     results = evaluate_recommender(recommender, test_eval, k_values=k_values)
@@ -254,6 +257,7 @@ def run_mlp(
 # Entrypoint
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     """Avalia todos os baselines e o MLP na configuração escolhida."""
     set_global_seed(42)
@@ -262,10 +266,10 @@ def main() -> None:
     k_values = _K_VALUES
 
     baselines: list[tuple[str, dict, int | None]] = [
-        ("popularity", {},                                                          None),
-        ("item_knn",   {"top_n_neighbors": 20, "max_users": 5_000},                 None),
-        ("svd",        {"n_components": 50, "seed": 42},                            None),
-        ("logistic",   {"neg_ratio": 3, "seed": 42, "max_positives": 20_000},        None),
+        ("popularity", {}, None),
+        ("item_knn", {"top_n_neighbors": 20, "max_users": 5_000}, None),
+        ("svd", {"n_components": 50, "seed": 42}, None),
+        ("logistic", {"neg_ratio": 3, "seed": 42, "max_positives": 20_000}, None),
     ]
 
     logger.info(
@@ -276,7 +280,10 @@ def main() -> None:
 
     for name, params, max_test_users in baselines:
         run_baseline(
-            name, train, test, k_values,
+            name,
+            train,
+            test,
+            k_values,
             max_test_users=max_test_users,
             **params,
         )

@@ -1,4 +1,5 @@
 """Configurações centrais da aplicação, carregadas de variáveis de ambiente."""
+
 from pathlib import Path
 
 from pydantic import Field

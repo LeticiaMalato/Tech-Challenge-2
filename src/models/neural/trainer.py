@@ -13,10 +13,13 @@ logger = logging.getLogger(__name__)
 
 class _Reshuffleable(Protocol):
     """Qualquer dataset que saiba se re-amostrar entre epochs."""
+
     def reshuffle(self, epoch: int) -> None: ...
 
 
-def _move_to_device(batch: tuple[torch.Tensor, ...], device: torch.device) -> tuple[torch.Tensor, ...]:
+def _move_to_device(
+    batch: tuple[torch.Tensor, ...], device: torch.device
+) -> tuple[torch.Tensor, ...]:
     """Move um batch de tensores para o device de treino."""
     return tuple(t.to(device) for t in batch)
 
@@ -157,7 +160,9 @@ def train(
         if reshuffle_dataset is not None:
             reshuffle_dataset.reshuffle(epoch)
 
-        train_loss = _train_epoch(model, train_loader, train_criterion, optimizer, device, grad_clip)
+        train_loss = _train_epoch(
+            model, train_loader, train_criterion, optimizer, device, grad_clip
+        )
         val_loss = _val_epoch(model, val_loader, val_criterion, device)
         scheduler.step(val_loss)
         history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss})
@@ -171,5 +176,7 @@ def train(
             break
 
     stopper.restore_best(model)
-    logger.info("Melhor época: %d | val_loss=%.4f", stopper.best_epoch, stopper.best_loss)
+    logger.info(
+        "Melhor época: %d | val_loss=%.4f", stopper.best_epoch, stopper.best_loss
+    )
     return model, history

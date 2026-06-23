@@ -1,4 +1,5 @@
 """Factory que instancia o pré-processador correto para cada fonte de dados."""
+
 from src.preprocessing.base import Preprocessor
 from src.preprocessing.categories import CategoriesPreprocessor
 from src.preprocessing.events import EventsPreprocessor

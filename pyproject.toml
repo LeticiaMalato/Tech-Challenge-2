@@ -3,7 +3,7 @@ name = "tech-challenge-2"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Leticia Malato",email = "leticiamalato3@gmail.com"}
+    {name = "Leticia Malato",email = "leticiamalato3@gmail.com"},
     {name = "Rafael Maranhão",email = "maranhaopara22@gmail.com"}
 ]
 readme = "README.md"
@@ -30,3 +30,17 @@ dev = [
     "ruff (>=0.15.18,<0.16.0)",
     "pytest (>=9.1.1,<10.0.0)"
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "D", "ANN"]
+ignore = ["D203", "D213"]  # incompatibilidades comuns entre regras de docstring
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # força o estilo Google que o desafio exige
+
+[tool.ruff.format]
+quote-style = "double"

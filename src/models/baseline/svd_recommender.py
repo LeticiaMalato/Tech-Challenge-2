@@ -58,11 +58,9 @@ class SVDRecommender(Recommender):
             Array de scores com itens vistos marcados como ``-inf``.
         """
         seen = self._interactions[self._interactions["visitorid"] == user_id]["itemid"]
-    
+
         seen_indices = [
-            self._item_index[item_id]
-            for item_id in seen
-            if item_id in self._item_index
+            self._item_index[item_id] for item_id in seen if item_id in self._item_index
         ]
         if seen_indices:
             scores[seen_indices] = -np.inf

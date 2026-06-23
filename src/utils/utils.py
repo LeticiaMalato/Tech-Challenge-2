@@ -1,4 +1,5 @@
 """Transformações reutilizáveis para os datasets de eventos e produtos."""
+
 import pandas as pd
 
 

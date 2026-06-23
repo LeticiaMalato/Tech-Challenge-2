@@ -9,7 +9,6 @@ garantindo uma comparação controlada entre arquiteturas.
 """
 
 import logging
-import os
 from pathlib import Path
 
 import mlflow
@@ -17,7 +16,7 @@ import pandas as pd
 
 from src.models.baseline.factory import build_recommender, list_available_recommenders
 from src.models.baseline.metrics import compare_models_metrics, evaluate_recommender
-from src.models.neural.recommender import MLPConfig, MLPRecommender
+from src.models.neural.recommender import MLPConfig
 from src.utils.seed import set_global_seed
 
 logging.basicConfig(
@@ -27,8 +26,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _TRAIN_PATH = Path("data/features/train.parquet")
-_TEST_PATH  = Path("data/features/test.parquet")
-_K_VALUES   = [5, 10, 20]
+_TEST_PATH = Path("data/features/test.parquet")
+_K_VALUES = [5, 10, 20]
 _MIN_INTERACTIONS = 3
 _CHECKPOINT_DIR = Path("models/checkpoints/mlp")
 _MLFLOW_EXPERIMENT = "retailrocket-recommender"
@@ -54,9 +53,10 @@ MLP_CONFIG = MLPConfig(
 # I/O
 # ---------------------------------------------------------------------------
 
+
 def load_data(
     train_path: Path = _TRAIN_PATH,
-    test_path: Path  = _TEST_PATH,
+    test_path: Path = _TEST_PATH,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Carrega os conjuntos de treino e teste em formato Parquet.
 
@@ -79,6 +79,7 @@ def load_data(
 # ---------------------------------------------------------------------------
 # Preparação de dados — compartilhada entre TODOS os modelos
 # ---------------------------------------------------------------------------
+
 
 def _build_train_with_full_coverage(
     train: pd.DataFrame,
@@ -122,7 +123,9 @@ def _build_train_with_full_coverage(
     return result
 
 
-def _filter_test_to_known_users(test: pd.DataFrame, train: pd.DataFrame) -> pd.DataFrame:
+def _filter_test_to_known_users(
+    test: pd.DataFrame, train: pd.DataFrame
+) -> pd.DataFrame:
     """Filtra o teste para usuários presentes no treino fornecido.
 
     Aplicada uma única vez sobre ``train_full`` e reutilizada por todos os
@@ -160,17 +163,14 @@ def _sample_test_users(test: pd.DataFrame, max_test_users: int) -> pd.DataFrame:
         DataFrame filtrado com os usuários amostrados.
     """
     n = min(max_test_users, test["visitorid"].nunique())
-    sample_users = (
-        test["visitorid"]
-        .drop_duplicates()
-        .sample(n=n, random_state=42)
-    )
+    sample_users = test["visitorid"].drop_duplicates().sample(n=n, random_state=42)
     return test[test["visitorid"].isin(sample_users)]
 
 
 # ---------------------------------------------------------------------------
 # Apresentação e tracking de resultados
 # ---------------------------------------------------------------------------
+
 
 def _log_results(name: str, results: pd.DataFrame) -> None:
     """Loga os resultados de avaliação formatados no console.
@@ -223,6 +223,7 @@ def _results_to_records(name: str, results: pd.DataFrame) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Execução de baselines
 # ---------------------------------------------------------------------------
+
 
 def run_baseline(
     name: str,
@@ -283,6 +284,7 @@ def run_baseline(
 # Execução do modelo neural
 # ---------------------------------------------------------------------------
 
+
 def run_mlp(
     train_full: pd.DataFrame,
     test_eval: pd.DataFrame,
@@ -328,7 +330,9 @@ def run_mlp(
             mlflow.log_metric("train_loss", train_loss, step=epoch)
             mlflow.log_metric("val_loss", val_loss, step=epoch)
 
-        recommender = build_recommender("mlp", config=MLP_CONFIG, checkpoint_dir=_CHECKPOINT_DIR)
+        recommender = build_recommender(
+            "mlp", config=MLP_CONFIG, checkpoint_dir=_CHECKPOINT_DIR
+        )
         recommender.fit(train_full, epoch_callback=log_epoch)
 
         results = evaluate_recommender(recommender, test_eval, k_values=k_values)
@@ -358,10 +362,10 @@ def main() -> None:
     k_values = _K_VALUES
 
     baselines: list[tuple[str, dict, int | None]] = [
-        ("popularity", {},                                                   None),
-        ("item_knn",   {"top_n_neighbors": 20, "max_users": 5_000},          None),
-        ("svd",        {"n_components": 50, "seed": 42},                     None),
-        ("logistic",   {"neg_ratio": 3, "seed": 42, "max_positives": 20_000}, None),
+        ("popularity", {}, None),
+        ("item_knn", {"top_n_neighbors": 20, "max_users": 5_000}, None),
+        ("svd", {"n_components": 50, "seed": 42}, None),
+        ("logistic", {"neg_ratio": 3, "seed": 42, "max_positives": 20_000}, None),
     ]
 
     logger.info(
@@ -374,7 +378,10 @@ def main() -> None:
 
     for name, params, max_test_users in baselines:
         baseline_results = run_baseline(
-            name, train_full, test_eval, k_values,
+            name,
+            train_full,
+            test_eval,
+            k_values,
             max_test_users=max_test_users,
             **params,
         )
@@ -386,7 +393,9 @@ def main() -> None:
 
     compare_models_metrics(all_results)
 
-    logger.info("Avaliação concluída. Execute 'mlflow ui' para visualizar os experimentos.")
+    logger.info(
+        "Avaliação concluída. Execute 'mlflow ui' para visualizar os experimentos."
+    )
 
 
 if __name__ == "__main__":

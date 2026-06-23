@@ -1,4 +1,5 @@
 """Valida se as variáveis de ambiente necessárias estão configuradas corretamente."""
+
 import sys
 
 from pydantic import ValidationError

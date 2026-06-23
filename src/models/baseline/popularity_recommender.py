@@ -44,7 +44,7 @@ class PopularityRecommender(Recommender):
         self._interactions = interactions.copy()
         self._ranking = _popularity_ranking(interactions)
         return self
-    
+
     def recommend(self, user_id: int, k: int) -> list[int]:
         """Retorna os k itens mais populares não vistos pelo usuário.
 

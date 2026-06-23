@@ -1,4 +1,5 @@
 """Contrato base para todos os pré-processadores do pipeline."""
+
 from abc import ABC, abstractmethod
 
 import pandas as pd

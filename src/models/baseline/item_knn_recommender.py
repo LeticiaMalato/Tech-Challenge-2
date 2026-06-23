@@ -43,18 +43,13 @@ class ItemKNNRecommender(Recommender):
         self._interactions = interactions.copy()
 
         # mantém apenas os usuários mais ativos para reduzir memória
-        top_users = (
-            interactions["visitorid"]
-            .value_counts()
-            .head(self._max_users)
-            .index
-        )
+        top_users = interactions["visitorid"].value_counts().head(self._max_users).index
         sampled = interactions[interactions["visitorid"].isin(top_users)]
 
         self._matrix, self._item_ids, self._item_index = build_item_user_matrix(sampled)
 
         return self
-    
+
     def _score_items(self, user_events: pd.DataFrame) -> np.ndarray:
         seen_mask = user_events["itemid"].isin(self._item_index)
         valid_events = user_events[seen_mask]
@@ -66,14 +61,13 @@ class ItemKNNRecommender(Recommender):
         weights = valid_events["weight"].to_numpy(dtype=float)
 
         # uma única chamada: (n_seen, n_items) — muito mais eficiente
-        sim_matrix = cosine_similarity(
-            self._matrix[seen_indices], self._matrix
-        )
+        sim_matrix = cosine_similarity(self._matrix[seen_indices], self._matrix)
         scores = (sim_matrix * weights[:, None]).sum(axis=0)
-        scores[seen_indices] = -np.inf  # garante que itens vistos não sejam recomendados
+        scores[
+            seen_indices
+        ] = -np.inf  # garante que itens vistos não sejam recomendados
         return scores
 
-    
     def recommend(self, user_id: int, k: int) -> list[int]:
         """Retorna os k itens com maior score de similaridade agregado.
 
@@ -91,4 +85,3 @@ class ItemKNNRecommender(Recommender):
         scores = self._score_items(user_events)
         top_indices = np.argsort(scores)[::-1][:k]
         return [self._item_ids[i] for i in top_indices]
-        

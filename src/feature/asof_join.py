@@ -1,4 +1,5 @@
 """Junção temporal as-of entre interações e propriedades de itens."""
+
 import pandas as pd
 
 
@@ -13,16 +14,12 @@ def _pivot_properties_to_wide(properties: pd.DataFrame) -> pd.DataFrame:
         DataFrame wide com uma coluna por propriedade, ordenado por timestamp.
     """
     props_sorted = properties.sort_values(["itemid", "timestamp"])
-    props_wide = (
-        props_sorted
-        .pivot_table(
-            index=["itemid", "timestamp"],
-            columns="property",
-            values="value",
-            aggfunc="last",
-        )
-        .reset_index()
-    )
+    props_wide = props_sorted.pivot_table(
+        index=["itemid", "timestamp"],
+        columns="property",
+        values="value",
+        aggfunc="last",
+    ).reset_index()
     props_wide.columns.name = None
     return props_wide.sort_values("timestamp").reset_index(drop=True)
 
@@ -49,9 +46,7 @@ def asof_join_properties(
         ``NaN`` nas colunas adicionadas.
     """
     props_wide = _pivot_properties_to_wide(properties)
-    interactions_sorted = (
-        interactions.sort_values("timestamp").reset_index(drop=True)
-    )
+    interactions_sorted = interactions.sort_values("timestamp").reset_index(drop=True)
     return pd.merge_asof(
         interactions_sorted,
         props_wide,

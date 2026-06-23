@@ -27,7 +27,7 @@ class IdEncoder:
         self._id_to_index: dict[int, int] = {}
         self._index_to_id: list[int] = []
 
-    def fit(self, ids: pd.Series) ->  "IdEncoder":
+    def fit(self, ids: pd.Series) -> "IdEncoder":
         """Constrói o vocabulário a partir dos IDs únicos da série.
 
         Args:

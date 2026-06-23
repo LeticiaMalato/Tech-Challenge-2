@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 #         if len(df) == n_before:
 #             break
 
+
 #     logger.info(
 #         "k-core finalizado em %d iterações. %d → %d interações (removidas: %d).",
 #         iteration,
@@ -80,7 +81,9 @@ def apply_kcore(interactions: pd.DataFrame, k: int = 5) -> pd.DataFrame:
         df = df[df["visitorid"].isin(valid_users)]
         logger.debug(
             "k-core iteração %d (usuários): %d → %d.",
-            iteration, n_before, len(df),
+            iteration,
+            n_before,
+            len(df),
         )
 
         n_after_users = len(df)
@@ -89,7 +92,9 @@ def apply_kcore(interactions: pd.DataFrame, k: int = 5) -> pd.DataFrame:
         df = df[df["itemid"].isin(valid_items)]
         logger.debug(
             "k-core iteração %d (itens): %d → %d.",
-            iteration, n_after_users, len(df),
+            iteration,
+            n_after_users,
+            len(df),
         )
 
         if len(df) == n_before:

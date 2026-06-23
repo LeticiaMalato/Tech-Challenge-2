@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 #     )
 #     return train, test
 
+
 def split_by_time(
     interactions: pd.DataFrame,
     test_ratio: float = 0.2,
@@ -80,9 +81,7 @@ def split_by_time(
         ValueError: Se ``test_ratio`` não estiver no intervalo (0.0, 1.0).
     """
     if not 0.0 < test_ratio < 1.0:
-        raise ValueError(
-            f"test_ratio deve estar em (0.0, 1.0), recebido: {test_ratio}"
-        )
+        raise ValueError(f"test_ratio deve estar em (0.0, 1.0), recebido: {test_ratio}")
 
     cutoff = interactions["timestamp"].quantile(1 - test_ratio)
 
@@ -95,13 +94,14 @@ def split_by_time(
     n_before = len(test)
     n_test_users_before = test["visitorid"].nunique()
 
-    test = test[
-        test["visitorid"].isin(known_users) & test["itemid"].isin(known_items)
-    ]
+    test = test[test["visitorid"].isin(known_users) & test["itemid"].isin(known_items)]
 
     logger.info(
         "Split temporal: cutoff=%s | treino=%d | teste=%d | cold-start removidos=%d.",
-        cutoff, len(train), len(test), n_before - len(test),
+        cutoff,
+        len(train),
+        len(test),
+        n_before - len(test),
     )
     logger.info(
         "Cobertura de usuários no teste: %d/%d (%.1f%%).",

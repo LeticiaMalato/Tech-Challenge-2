@@ -36,6 +36,7 @@ class MLPConfig:
         num_workers: Número de workers do DataLoader.
         device: ``"auto"``, ``"cpu"`` ou ``"cuda"``.
     """
+
     embed_dim: int = 16
     neg_ratio: int = 4
     lr: float = 1e-3
@@ -82,7 +83,6 @@ class MLPRecommender(Recommender):
             config: Hiperparâmetros do modelo. Usa defaults se ``None``.
             checkpoint_dir: Diretório onde o checkpoint final é salvo.
         """
-        
         self._cfg = config or MLPConfig()
         self._checkpoint_dir = checkpoint_dir
         self._checkpoint_path = checkpoint_dir / "mlp_best.pt"
@@ -121,7 +121,9 @@ class MLPRecommender(Recommender):
 
         train_loader, val_loader, train_ds = self._build_loaders(interactions)
         self._net, self._history = train(
-            self._net, train_loader, val_loader,
+            self._net,
+            train_loader,
+            val_loader,
             epochs=self._cfg.max_epochs,
             lr=self._cfg.lr,
             weight_decay=self._cfg.weight_decay,
@@ -133,7 +135,7 @@ class MLPRecommender(Recommender):
         )
         self._persist_checkpoint()
         return self
-    
+
     def recommend(self, user_id: int, k: int) -> list[int]:
         """Retorna os k itens mais recomendados para o usuário.
 
@@ -176,7 +178,8 @@ class MLPRecommender(Recommender):
         )
         logger.info(
             "Re-indexação local | usuários: %d | itens: %d",
-            len(self._user_index), len(self._item_index),
+            len(self._user_index),
+            len(self._item_index),
         )
 
     def _compute_popularity(self, interactions: pd.DataFrame) -> None:
@@ -223,7 +226,9 @@ class MLPRecommender(Recommender):
         """
         train_df, val_df = self._split_leave_one_out(interactions)
         n_items = len(self._item_index)
-        train_ds = InteractionDataset(train_df, n_items, self._cfg.neg_ratio, self._cfg.seed)
+        train_ds = InteractionDataset(
+            train_df, n_items, self._cfg.neg_ratio, self._cfg.seed
+        )
         val_ds = InteractionDataset(val_df, n_items, neg_ratio=1, seed=self._cfg.seed)
         return (
             self._make_loader(train_ds, shuffle=True),
@@ -246,7 +251,9 @@ class MLPRecommender(Recommender):
             Tupla (train_df, val_df).
         """
         if "timestamp" in interactions.columns:
-            df = interactions.sort_values(["user_idx", "timestamp"]).reset_index(drop=True)
+            df = interactions.sort_values(["user_idx", "timestamp"]).reset_index(
+                drop=True
+            )
         else:
             df = interactions.reset_index(drop=True)
 
@@ -268,8 +275,11 @@ class MLPRecommender(Recommender):
         cold = set(val_df["user_idx"]) - set(train_df["user_idx"])
         logger.info(
             "Leave-one-out | treino: %d (%d users) | val: %d (%d users) | cold-start: %d",
-            len(train_df), train_df["user_idx"].nunique(),
-            len(val_df), val_df["user_idx"].nunique(), len(cold),
+            len(train_df),
+            train_df["user_idx"].nunique(),
+            len(val_df),
+            val_df["user_idx"].nunique(),
+            len(cold),
         )
         return train_df, val_df
 
@@ -333,12 +343,12 @@ class MLPRecommender(Recommender):
         if seen:
             scores[list(seen)] = -np.inf
 
-    # Checkpoint 
+    # Checkpoint
     @property
     def checkpoint_path(self) -> Path:
         """Caminho do checkpoint salvo pelo treino mais recente."""
         return self._checkpoint_path
-    
+
     def _persist_checkpoint(self) -> None:
         """Salva em disco o state_dict final, já restaurado ao melhor checkpoint
         pelo ``EarlyStopping`` dentro de ``src.train.trainer.train``.

@@ -79,7 +79,9 @@ def _build_item_stats(
         ambas como arrays de shape (n_items,).
     """
     item_idx = interactions["itemid"].map(item_index)
-    weighted = interactions.assign(item_idx=item_idx).groupby("item_idx")["weight"].sum()
+    weighted = (
+        interactions.assign(item_idx=item_idx).groupby("item_idx")["weight"].sum()
+    )
     counts = interactions.assign(item_idx=item_idx).groupby("item_idx").size()
 
     popularity = np.zeros(n_items, dtype=np.float64)
@@ -111,7 +113,9 @@ def _build_user_stats(
     """
     user_idx = interactions["visitorid"].map(user_index)
     counts = interactions.assign(user_idx=user_idx).groupby("user_idx").size()
-    avg_weight = interactions.assign(user_idx=user_idx).groupby("user_idx")["weight"].mean()
+    avg_weight = (
+        interactions.assign(user_idx=user_idx).groupby("user_idx")["weight"].mean()
+    )
 
     activity = np.zeros(n_users, dtype=np.float64)
     activity[counts.index] = counts.to_numpy()
@@ -224,7 +228,7 @@ class LogisticRecommender(Recommender):
         x_train = self._scaler.fit_transform(x_train)
         self._clf.fit(x_train, y_train)
         return self
-    
+
     def _build_index(self, interactions: pd.DataFrame) -> None:
         """Constrói os índices locais de usuário e item.
 
@@ -248,14 +252,18 @@ class LogisticRecommender(Recommender):
         Returns:
             Tupla (X, y) com matriz de features e rótulos binários.
         """
-        all_positives = list(zip(
-            interactions["visitorid"].map(self._user_index),
-            interactions["itemid"].map(self._item_index),
-        ))
+        all_positives = list(
+            zip(
+                interactions["visitorid"].map(self._user_index),
+                interactions["itemid"].map(self._item_index),
+            )
+        )
 
         rng = np.random.default_rng(self._seed)
         if len(all_positives) > self._max_positives:
-            indices = rng.choice(len(all_positives), size=self._max_positives, replace=False)
+            indices = rng.choice(
+                len(all_positives), size=self._max_positives, replace=False
+            )
             positives = [all_positives[i] for i in indices]
         else:
             positives = all_positives
@@ -269,7 +277,9 @@ class LogisticRecommender(Recommender):
         )
         x_pos = self._features_for(positives)
         x_neg = self._features_for(negatives)
-        return np.vstack([x_pos, x_neg]), np.array([1] * len(positives) + [0] * len(negatives))
+        return np.vstack([x_pos, x_neg]), np.array(
+            [1] * len(positives) + [0] * len(negatives)
+        )
 
     def _features_for(self, pairs: list[tuple[int, int]]) -> np.ndarray:
         """Atalho para construir features usando o estado atual do modelo.
@@ -300,9 +310,7 @@ class LogisticRecommender(Recommender):
         """
         seen = self._interactions[self._interactions["visitorid"] == user_id]["itemid"]
         seen_indices = [
-            self._item_index[item_id]
-            for item_id in seen
-            if item_id in self._item_index
+            self._item_index[item_id] for item_id in seen if item_id in self._item_index
         ]
         if seen_indices:
             scores[seen_indices] = -np.inf

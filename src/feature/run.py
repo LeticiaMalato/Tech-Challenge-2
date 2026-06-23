@@ -89,7 +89,10 @@ def run(processed_dir: Path, out_dir: Path, k: int, test_ratio: float) -> None:
 
     logger.info(
         "Concluído. Treino: %d | Teste: %d | Usuários: %d | Itens: %d.",
-        len(train), len(test), user_enc.vocab_size, item_enc.vocab_size,
+        len(train),
+        len(test),
+        user_enc.vocab_size,
+        item_enc.vocab_size,
     )
 
 
@@ -102,19 +105,27 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description="Stage de feature engineering")
     parser.add_argument(
-        "--processed-dir", type=Path, default=Path("data/processed"),
+        "--processed-dir",
+        type=Path,
+        default=Path("data/processed"),
         help="Diretório com events.parquet e item_properties.parquet.",
     )
     parser.add_argument(
-        "--out-dir", type=Path, default=Path("data/features"),
+        "--out-dir",
+        type=Path,
+        default=Path("data/features"),
         help="Diretório de saída para os artefatos de features.",
     )
     parser.add_argument(
-        "--k", type=int, default=5,
+        "--k",
+        type=int,
+        default=5,
         help="Limiar mínimo de interações para o filtro k-core.",
     )
     parser.add_argument(
-        "--test-ratio", type=float, default=0.2,
+        "--test-ratio",
+        type=float,
+        default=0.2,
         help="Proporção temporal destinada ao conjunto de teste (0 < valor < 1).",
     )
     args = parser.parse_args()

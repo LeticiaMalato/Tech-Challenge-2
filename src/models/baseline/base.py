@@ -1,4 +1,5 @@
 """Interface base para todos os recomendadores do sistema."""
+
 from abc import ABC, abstractmethod
 
 import pandas as pd

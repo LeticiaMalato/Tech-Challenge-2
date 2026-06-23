@@ -66,7 +66,7 @@ class InteractionDataset(Dataset):
         Returns:
             Array de int64 com as chaves únicas dos pares positivos.
         """
-        return (users.astype(np.int64) * self._n_items + items.astype(np.int64))
+        return users.astype(np.int64) * self._n_items + items.astype(np.int64)
 
     def _build_samples(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Constrói arrays de (user, item, label) com negativos vetorizados.
@@ -142,11 +142,15 @@ class InteractionDataset(Dataset):
         n_missing = n_needed - len(neg_users)
         extra_size = n_missing * _MAX_OVERSAMPLE_FACTOR
         extra_users = np.resize(neg_users[:n_missing], extra_size)
-        extra_items = self._rng.integers(0, self._n_items, size=extra_size, dtype=np.int32)
+        extra_items = self._rng.integers(
+            0, self._n_items, size=extra_size, dtype=np.int32
+        )
         mask = self._collision_mask(extra_users, extra_items)
         valid_u = extra_users[~mask][:n_missing]
         valid_i = extra_items[~mask][:n_missing]
-        return np.concatenate([neg_users, valid_u]), np.concatenate([neg_items, valid_i])
+        return np.concatenate([neg_users, valid_u]), np.concatenate(
+            [neg_items, valid_i]
+        )
 
     def _concat_samples(
         self,

@@ -1,4 +1,5 @@
 """Entrada do stage de pré-processamento do pipeline DVC."""
+
 import argparse
 import logging
 from pathlib import Path

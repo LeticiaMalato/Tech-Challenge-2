@@ -149,16 +149,19 @@ def evaluate_recommender(
             ndcgs.append(ndcg_at_k(recs, relevant, k))
             mrrs.append(mrr_at_k(recs, relevant, k))
 
-        results.append({
-            "k":         k,
-            "hit_rate":  np.mean(hit_rates),
-            "precision": np.mean(precisions),
-            "recall":    np.mean(recalls),
-            "ndcg":      np.mean(ndcgs),
-            "mrr":       np.mean(mrrs),
-        })
+        results.append(
+            {
+                "k": k,
+                "hit_rate": np.mean(hit_rates),
+                "precision": np.mean(precisions),
+                "recall": np.mean(recalls),
+                "ndcg": np.mean(ndcgs),
+                "mrr": np.mean(mrrs),
+            }
+        )
 
     return pd.DataFrame(results)
+
 
 def compare_models_metrics(resultados: list[dict]) -> pd.DataFrame:
     """Consolida e imprime uma tabela comparativa entre múltiplos modelos.
@@ -190,7 +193,9 @@ def compare_models_metrics(resultados: list[dict]) -> pd.DataFrame:
         ("Precision", df.loc[df["precision"].idxmax()]),
     ]
     for titulo, melhor in melhores:
-        print(f"\n  Melhor modelo por {titulo}: {melhor['model']} (k={int(melhor['k'])})")
+        print(
+            f"\n  Melhor modelo por {titulo}: {melhor['model']} (k={int(melhor['k'])})"
+        )
         print(f"    hit_rate:  {melhor['hit_rate']:.4f}")
         print(f"    precision: {melhor['precision']:.4f}")
         print(f"    recall:    {melhor['recall']:.4f}")

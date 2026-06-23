@@ -1,4 +1,5 @@
 """Pré-processamento do dataset de eventos de comportamento do usuário."""
+
 import pandas as pd
 
 from src.preprocessing.base import Preprocessor

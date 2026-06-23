@@ -5,14 +5,14 @@ from src.models.baseline.item_knn_recommender import ItemKNNRecommender
 from src.models.baseline.logistic_recommender import LogisticRecommender
 from src.models.baseline.popularity_recommender import PopularityRecommender
 from src.models.baseline.svd_recommender import SVDRecommender
-from src.models.neural.recommender import MLPConfig, MLPRecommender
+from src.models.neural.recommender import MLPRecommender
 
 _REGISTRY: dict[str, type[Recommender]] = {
     "popularity": PopularityRecommender,
-    "item_knn":   ItemKNNRecommender,
-    "svd":        SVDRecommender,
-    "logistic":   LogisticRecommender,
-    "mlp":        MLPRecommender,
+    "item_knn": ItemKNNRecommender,
+    "svd": SVDRecommender,
+    "logistic": LogisticRecommender,
+    "mlp": MLPRecommender,
 }
 
 
@@ -40,8 +40,7 @@ def build_recommender(name: str, **kwargs) -> Recommender:
     """
     if name not in _REGISTRY:
         raise KeyError(
-            f"modelo desconhecido: {name!r}. "
-            f"Disponíveis: {list(_REGISTRY.keys())}"
+            f"modelo desconhecido: {name!r}. Disponíveis: {list(_REGISTRY.keys())}"
         )
     return _REGISTRY[name](**kwargs)
 
