@@ -57,12 +57,22 @@ class ItemKNNRecommender(Recommender):
         if valid_events.empty:
             return np.zeros(len(self._item_ids))
 
-        seen_indices = [self._item_index[iid] for iid in valid_events["itemid"]]
-        weights = valid_events["weight"].to_numpy(dtype=float)
 
-        # uma única chamada: (n_seen, n_items) — muito mais eficiente
-        sim_matrix = cosine_similarity(self._matrix[seen_indices], self._matrix)
-        scores = (sim_matrix * weights[:, None]).sum(axis=0)
+        agg = valid_events.groupby("itemid", as_index=False)["weight"].sum()
+
+        seen_indices = [self._item_index[iid] for iid in agg["itemid"]]
+        weights = agg["weight"].to_numpy(dtype=np.float32)
+
+        # dense_output=False mantém o resultado em formato esparso,
+        # evitando materializar (n_seen x n_items) como array denso.
+        sim_matrix = cosine_similarity(
+            self._matrix[seen_indices], self._matrix, dense_output=False
+        )
+
+        scores = np.asarray(
+            sim_matrix.multiply(weights[:, None]).sum(axis=0)
+        ).ravel()
+
         scores[
             seen_indices
         ] = -np.inf  # garante que itens vistos não sejam recomendados
