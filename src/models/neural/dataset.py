@@ -25,6 +25,14 @@ class InteractionDataset(Dataset):
         neg_ratio: int = 4,
         seed: int = 42,
     ) -> None:
+        """Inicializa o dataset com as interações positivas e parâmetros de amostragem.
+
+        Args:
+            interactions: DataFrame com colunas ``user_idx`` e ``item_idx``.
+            n_items: Tamanho total do vocabulário de itens.
+            neg_ratio: Número de negativos por positivo.
+            seed: Semente para reprodutibilidade da amostragem.
+        """
         self._n_items = n_items
         self._neg_ratio = neg_ratio
         self._seed = seed

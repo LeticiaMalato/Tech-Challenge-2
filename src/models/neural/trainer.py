@@ -2,6 +2,7 @@
 
 import copy
 import logging
+from collections.abc import Callable
 from typing import Protocol
 
 import torch
@@ -77,6 +78,12 @@ class EarlyStopping:
     """
 
     def __init__(self, patience: int = 5, min_delta: float = 1e-4) -> None:
+        """Inicializa o monitor de early stopping.
+
+        Args:
+            patience: Épocas sem melhora antes de sinalizar parada.
+            min_delta: Melhora mínima para ser considerada significativa.
+        """
         self.patience = patience
         self.min_delta = min_delta
         self._counter = 0
@@ -125,7 +132,7 @@ def train(
     pos_weight: float | None = None,
     grad_clip: float | None = 1.0,
     reshuffle_dataset: _Reshuffleable | None = None,
-    epoch_callback=None,
+    epoch_callback: Callable[[int, float, float], None] | None = None,
 ) -> tuple[nn.Module, list[dict]]:
     """Treina o modelo com early stopping, scheduler e grad clipping.
 

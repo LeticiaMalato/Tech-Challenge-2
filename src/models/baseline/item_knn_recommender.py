@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 
 from src.models.baseline.base import Recommender
@@ -14,7 +15,9 @@ class ItemKNNRecommender(Recommender):
     Para viabilizar o uso em datasets grandes, a matriz item×usuário é
     construída sobre uma amostra dos usuários mais ativos, controlada por
     ``max_users``. A similaridade é calculada sob demanda por item visto,
-    evitando alocar a matriz completa n_items×n_items em memória.
+    truncada aos ``top_n_neighbors`` vizinhos mais similares antes de
+    agregar — evitando que itens pouco relacionados dominem o score
+    apenas por soma cumulativa sobre o catálogo inteiro.
     """
 
     def __init__(self, top_n_neighbors: int = 20, max_users: int = 5000) -> None:
@@ -30,7 +33,7 @@ class ItemKNNRecommender(Recommender):
         self._max_users = max_users
         self._item_ids: list[int] = []
         self._item_index: dict[int, int] = {}
-        self._matrix: object = None
+        self._matrix: csr_matrix | None = None
         self._interactions: pd.DataFrame = pd.DataFrame()
 
     def fit(self, interactions: pd.DataFrame) -> "ItemKNNRecommender":
@@ -50,13 +53,45 @@ class ItemKNNRecommender(Recommender):
 
         return self
 
+    def _truncate_top_n(self, sim_matrix: csr_matrix) -> csr_matrix:
+        """Mantém apenas as top_n_neighbors maiores similaridades por linha.
+
+        Cada linha corresponde a um item visto pelo usuário; o número de
+        linhas é tipicamente pequeno (itens que um usuário interagiu),
+        então converter linha a linha para denso é seguro em memória —
+        ao contrário de converter a matriz inteira, cujas colunas cobrem
+        o catálogo inteiro.
+
+        Args:
+            sim_matrix: Matriz esparsa de shape (n_seen, n_items).
+
+        Returns:
+            Matriz esparsa da mesma shape, com no máximo
+            ``top_n_neighbors`` valores não nulos por linha.
+        """
+        sim_matrix = sim_matrix.tocsr()
+        rows, cols, data = [], [], []
+        top_n = self._top_n_neighbors
+
+        for row_idx in range(sim_matrix.shape[0]):
+            row = sim_matrix.getrow(row_idx).toarray().ravel()
+            if top_n < len(row):
+                top_indices = np.argpartition(row, -top_n)[-top_n:]
+            else:
+                top_indices = np.nonzero(row)[0]
+            nonzero = top_indices[row[top_indices] != 0]
+            rows.extend([row_idx] * len(nonzero))
+            cols.extend(nonzero.tolist())
+            data.extend(row[nonzero].tolist())
+
+        return csr_matrix((data, (rows, cols)), shape=sim_matrix.shape)
+
     def _score_items(self, user_events: pd.DataFrame) -> np.ndarray:
         seen_mask = user_events["itemid"].isin(self._item_index)
         valid_events = user_events[seen_mask]
 
         if valid_events.empty:
             return np.zeros(len(self._item_ids))
-
 
         agg = valid_events.groupby("itemid", as_index=False)["weight"].sum()
 
@@ -68,14 +103,12 @@ class ItemKNNRecommender(Recommender):
         sim_matrix = cosine_similarity(
             self._matrix[seen_indices], self._matrix, dense_output=False
         )
+        sim_matrix = self._truncate_top_n(sim_matrix)
 
-        scores = np.asarray(
-            sim_matrix.multiply(weights[:, None]).sum(axis=0)
-        ).ravel()
+        scores = np.asarray(sim_matrix.multiply(weights[:, None]).sum(axis=0)).ravel()
 
-        scores[
-            seen_indices
-        ] = -np.inf  # garante que itens vistos não sejam recomendados
+        # garante que itens vistos não sejam recomendados
+        scores[seen_indices] = -np.inf
         return scores
 
     def recommend(self, user_id: int, k: int) -> list[int]:

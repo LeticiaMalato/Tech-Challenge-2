@@ -274,7 +274,8 @@ class MLPRecommender(Recommender):
 
         cold = set(val_df["user_idx"]) - set(train_df["user_idx"])
         logger.info(
-            "Leave-one-out | treino: %d (%d users) | val: %d (%d users) | cold-start: %d",
+            "Leave-one-out | treino: %d (%d users) | "
+            "val: %d (%d users) | cold-start: %d",
             len(train_df),
             train_df["user_idx"].nunique(),
             len(val_df),
@@ -350,8 +351,10 @@ class MLPRecommender(Recommender):
         return self._checkpoint_path
 
     def _persist_checkpoint(self) -> None:
-        """Salva em disco o state_dict final, já restaurado ao melhor checkpoint
-        pelo ``EarlyStopping`` dentro de ``src.train.trainer.train``.
+        """Salva o checkpoint final em disco.
+
+        Restaura ao melhor checkpoint pelo ``EarlyStopping`` dentro de
+        ``src.models.neural.trainer.train`` antes de salvar.
         """
         self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
         torch.save(self._net.state_dict(), self._checkpoint_path)

@@ -256,6 +256,7 @@ class LogisticRecommender(Recommender):
             zip(
                 interactions["visitorid"].map(self._user_index),
                 interactions["itemid"].map(self._item_index),
+                strict=True,
             )
         )
 

@@ -19,6 +19,7 @@ import mlflow.pyfunc
 import pandas as pd
 from mlflow import MlflowClient
 
+from src.config import settings
 from src.models.baseline.base import Recommender
 from src.models.baseline.factory import build_recommender, list_available_recommenders
 from src.models.baseline.metrics import compare_models_metrics, evaluate_recommender
@@ -31,14 +32,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-_TRAIN_PATH = Path("data/features/train.parquet")
-_TEST_PATH = Path("data/features/test.parquet")
 _K_VALUES = [5, 10, 20]
 _SELECTION_K = 10  # critério de seleção do melhor modelo para o Registry
 _MIN_INTERACTIONS = 3
-_CHECKPOINT_DIR = Path("models/checkpoints/mlp")
-_MLFLOW_EXPERIMENT = "retailrocket-recommender"
-_MODEL_REGISTRY_NAME = "retailrocket-recommender"
 _METRIC_NAMES = ("hit_rate", "precision", "recall", "ndcg", "mrr")
 
 # Configuração do MLP, validada empiricamente via varredura de
@@ -61,8 +57,8 @@ MLP_CONFIG = MLPConfig(
 
 
 def load_data(
-    train_path: Path = _TRAIN_PATH,
-    test_path: Path = _TEST_PATH,
+    train_path: Path = settings.train_path,
+    test_path: Path = settings.test_path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Carrega os conjuntos de treino e teste em formato Parquet.
 
@@ -138,7 +134,8 @@ def _filter_test_to_known_users(
     known_users = set(train["visitorid"].unique())
     filtered = test[test["visitorid"].isin(known_users)].copy()
     logger.info(
-        "Teste filtrado por cobertura do treino: %d → %d usuários | %d → %d interações.",
+        "Teste filtrado por cobertura do treino: "
+        "%d → %d usuários | %d → %d interações.",
         test["visitorid"].nunique(),
         filtered["visitorid"].nunique(),
         len(test),
@@ -392,11 +389,12 @@ def run_mlp(
             mlflow.log_metric("train_loss", train_loss, step=epoch)
             mlflow.log_metric("val_loss", val_loss, step=epoch)
             print(
-                f"Epoch {epoch:3d} | train_loss={train_loss:.4f} | val_loss={val_loss:.4f}"
+                f"Epoch {epoch:3d} | train_loss={train_loss:.4f} "
+                f"| val_loss={val_loss:.4f}"
             )
 
         recommender = build_recommender(
-            "mlp", config=MLP_CONFIG, checkpoint_dir=_CHECKPOINT_DIR
+            "mlp", config=MLP_CONFIG, checkpoint_dir=settings.checkpoint_dir
         )
         recommender.fit(train_full, epoch_callback=log_epoch)
         _log_model(recommender)
@@ -413,7 +411,7 @@ def run_mlp(
 
 def register_best_model(
     run_id: str,
-    model_name: str = _MODEL_REGISTRY_NAME,
+    model_name: str = settings.model_registry_name,
     artifact_path: str = "model",
 ) -> str:
     """Registra o modelo de um run no Model Registry e o promove a Production.
@@ -462,9 +460,9 @@ def main() -> None:
     todos os modelos. Ao final, seleciona o modelo com maior NDCG@10 entre
     todos os candidatos e o registra/promove no MLflow Model Registry.
     """
-    set_global_seed(42)
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
-    mlflow.set_experiment(_MLFLOW_EXPERIMENT)
+    set_global_seed(settings.random_seed)
+    mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+    mlflow.set_experiment(settings.mlflow_experiment)
 
     # Reforça o logger após a inicialização do MLflow/Alembic: a primeira
     # vez que o backend SQLite é usado, o Alembic carrega sua própria
@@ -524,10 +522,12 @@ def main() -> None:
         best_ndcg,
         best_run_id,
     )
-    version = register_best_model(run_id=best_run_id, model_name=_MODEL_REGISTRY_NAME)
+    version = register_best_model(
+        run_id=best_run_id, model_name=settings.model_registry_name
+    )
     logger.info(
         "Registry: '%s' v%s (Production) ← modelo '%s'.",
-        _MODEL_REGISTRY_NAME,
+        settings.model_registry_name,
         version,
         best_name,
     )
