@@ -28,12 +28,14 @@ build-backend = "poetry.core.masonry.api"
 [dependency-groups]
 dev = [
     "ruff (>=0.15.18,<0.16.0)",
-    "pytest (>=9.1.1,<10.0.0)"
+    "pytest (>=9.1.1,<10.0.0)",
+    "pre-commit (>=4.6.0,<5.0.0)"
 ]
 
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+extend-exclude = ["notebook", "*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "D", "ANN"]

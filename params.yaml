@@ -1,0 +1,3 @@
+feature_eng:
+  k: 5
+  test_ratio: 0.2
