@@ -350,12 +350,65 @@ class MLPRecommender(Recommender):
         """Caminho do checkpoint salvo pelo treino mais recente."""
         return self._checkpoint_path
 
-    def _persist_checkpoint(self) -> None:
-        """Salva o checkpoint final em disco.
+    def _inference_payload(self) -> dict:
+        """Monta o dicionário serializável necessário para inferência."""
+        if self._net is None:
+            raise RuntimeError("Não há rede treinada para persistir.")
+        return {
+            "state_dict": self._net.state_dict(),
+            "config": self._cfg.__dict__,
+            "user_index": self._user_index,
+            "item_index": self._item_index,
+            "item_ids": self._item_ids,
+            "seen_by_user": self._seen_by_user,
+        }
 
-        Restaura ao melhor checkpoint pelo ``EarlyStopping`` dentro de
-        ``src.models.neural.trainer.train`` antes de salvar.
+    def _persist_checkpoint(self) -> None:
+        """Salva artefato completo de inferência em disco.
+
+        Inclui pesos da rede e metadados necessários para ``recommend()``
+        sem reler o parquet de treino. O ``EarlyStopping`` já restaurou
+        os melhores pesos dentro de ``trainer.train`` antes desta chamada.
         """
         self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        torch.save(self._net.state_dict(), self._checkpoint_path)
-        logger.info("Checkpoint final salvo em %s.", self._checkpoint_path)
+        torch.save(self._inference_payload(), self._checkpoint_path)
+        logger.info("Checkpoint de inferência salvo em %s.", self._checkpoint_path)
+
+    def _restore_from_payload(self, payload: dict) -> None:
+        """Restaura índices, itens vistos e pesos a partir do payload."""
+        self._user_index = payload["user_index"]
+        self._item_index = payload["item_index"]
+        self._item_ids = list(payload["item_ids"])
+        self._seen_by_user = payload["seen_by_user"]
+        self._net = MatrixFactorizationNet(
+            n_users=len(self._user_index),
+            n_items=len(self._item_index),
+            embed_dim=self._cfg.embed_dim,
+        ).to(self._device)
+        self._net.load_state_dict(payload["state_dict"])
+        self._net.eval()
+
+    @classmethod
+    def load(cls, path: Path, device: str = "cpu") -> "MLPRecommender":
+        """Carrega um artefato de inferência e reconstrói o recomendador.
+
+        Args:
+            path: Caminho do arquivo ``.pt`` gerado por ``_persist_checkpoint``.
+            device: Device PyTorch para a rede (``"cpu"`` ou ``"cuda"``).
+
+        Returns:
+            Instância pronta para ``recommend()``.
+
+        Raises:
+            FileNotFoundError: Se ``path`` não existir.
+            KeyError: Se o artefato não tiver os campos esperados.
+        """
+        if not path.exists():
+            raise FileNotFoundError(f"Artefato não encontrado: {path}")
+        payload = torch.load(path, map_location=device, weights_only=False)
+        config = MLPConfig(**{**payload["config"], "device": device})
+        instance = cls(config=config, checkpoint_dir=path.parent)
+        instance._checkpoint_path = path
+        instance._restore_from_payload(payload)
+        logger.info("Artefato de inferência carregado de %s.", path)
+        return instance

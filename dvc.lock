@@ -117,8 +117,8 @@ stages:
       size: 4306
     - path: src/feature/kcore.py
       hash: md5
-      md5: de5bd92270634b47bad03de2929e381c
-      size: 3475
+      md5: c540981885a3e868efd35f60ecc78fca
+      size: 1972
     - path: src/feature/run.py
       hash: md5
       md5: 6db5157f09a8f3cf8dc2a68c9455feca
@@ -165,18 +165,18 @@ stages:
       size: 1276
     - path: src/models/baseline
       hash: md5
-      md5: ef929ac1e9130241790b351136eb4844.dir
-      size: 83512
+      md5: d36d61a2d51a066ff05bdc7a6995650f.dir
+      size: 87643
       nfiles: 16
     - path: src/models/neural
       hash: md5
-      md5: c15ae8c77afcf0db211db217e4de5793.dir
-      size: 75546
-      nfiles: 11
+      md5: 0c9cc1456a7c4faf839b7b3e8050923d.dir
+      size: 80778
+      nfiles: 10
     - path: src/train/run.py
       hash: md5
-      md5: 3afd82cef72a68e36fc27844bfb2f03a
-      size: 18927
+      md5: b291c0dee186964b8e5b8a4b18609841
+      size: 18978
     - path: src/utils/seed.py
       hash: md5
       md5: 3c61b1e562601b185789b26738c705ae
@@ -184,5 +184,5 @@ stages:
     outs:
     - path: models/checkpoints/mlp/mlp_best.pt
       hash: md5
-      md5: f1edd92c6f0af9e597bb18dce0ab2450
-      size: 11794791
+      md5: 0bafdb738c7a3913e684edbb0737f573
+      size: 20895527

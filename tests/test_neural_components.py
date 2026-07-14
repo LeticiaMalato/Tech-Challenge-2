@@ -1,4 +1,6 @@
-"""Testes unitários para EarlyStopping e InteractionDataset."""
+"""Testes unitários para EarlyStopping, InteractionDataset e checkpoint MLP."""
+
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -6,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from src.models.neural.dataset import InteractionDataset
+from src.models.neural.recommender import MLPConfig, MLPRecommender
 from src.models.neural.trainer import EarlyStopping
 
 
@@ -137,3 +140,37 @@ def test_dataset_getitem_retorna_dtypes_esperados() -> None:
     assert user.dtype == torch.int64
     assert item.dtype == torch.int64
     assert label.dtype == torch.float32
+
+
+# Checkpoint de inferência (MLPRecommender)
+
+
+def _tiny_interactions() -> pd.DataFrame:
+    """Interações mínimas para treinar e serializar um MLP."""
+    return pd.DataFrame(
+        {
+            "visitorid": [10, 10, 10, 20, 20, 20, 30, 30, 30],
+            "itemid": [100, 101, 102, 100, 103, 104, 101, 102, 105],
+            "timestamp": list(range(9)),
+        }
+    )
+
+
+def test_mlp_checkpoint_roundtrip_preserva_recommend(tmp_path: Path) -> None:
+    """Save/load deve preservar recomendações sem reler o parquet."""
+    config = MLPConfig(
+        embed_dim=4,
+        neg_ratio=1,
+        batch_size=4,
+        max_epochs=2,
+        patience=2,
+        seed=42,
+        device="cpu",
+    )
+    original = MLPRecommender(config=config, checkpoint_dir=tmp_path)
+    original.fit(_tiny_interactions())
+    expected = original.recommend(user_id=10, k=3)
+
+    loaded = MLPRecommender.load(tmp_path / "mlp_best.pt", device="cpu")
+    assert loaded.recommend(user_id=10, k=3) == expected
+    assert loaded.recommend(user_id=999, k=3) == []

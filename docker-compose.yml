@@ -1,0 +1,71 @@
+services:
+  mlflow:
+    image: python:3.11-slim
+    container_name: tc2-mlflow
+    working_dir: /mlflow
+    command: >
+      bash -c "pip install --no-cache-dir 'mlflow>=2.14,<3.0' gunicorn
+      && mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlflow/artifacts"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000')",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  train:
+    build:
+      context: .
+      target: train
+    container_name: tc2-train
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./artifacts:/app/artifacts
+      - ./params.yaml:/app/params.yaml:ro
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    profiles:
+      - train
+
+  api:
+    build:
+      context: .
+      target: runtime
+    container_name: tc2-api
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      # Preferência local: checkpoint do treino; fallback: artifacts/ versionado
+      MODEL_PATH: /app/models/checkpoints/mlp/mlp_best.pt
+    volumes:
+      - ./models/checkpoints/mlp:/app/models/checkpoints/mlp:ro
+      - ./artifacts:/app/artifacts:ro
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ ! -f "$$MODEL_PATH" ] && [ -f /app/artifacts/mlp_best.pt ]; then
+          export MODEL_PATH=/app/artifacts/mlp_best.pt
+        fi
+        exec uvicorn src.api.app:app --host 0.0.0.0 --port $${PORT:-8000}
+volumes:
+  mlflow_data:

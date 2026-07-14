@@ -173,6 +173,11 @@ mlflow.db
 models/checkpoints/
 *.pt
 
+# Artefato de inferência versionado para deploy no Render
+!artifacts/
+!artifacts/.gitkeep
+!artifacts/mlp_best.pt
+
 # Spyder project settings
 .spyderproject
 .spyproject

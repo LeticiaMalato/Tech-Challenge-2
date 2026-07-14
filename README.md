@@ -8,7 +8,7 @@ git clone <url-do-repositorio>
 cd Tech-Challenge-2
 
 # instala dependências (prod + dev)
-poetry install --with dev
+poetry install --with dev --no-root
 
 # copia o template de variáveis de ambiente
 Copy-Item .env.example .env
@@ -47,6 +47,13 @@ O DVC identifica automaticamente quais stages precisam ser reprocessados
 com base nas dependências declaradas em `dvc.yaml` — stages a jusante de
 uma mudança são recalculados; os demais são reaproveitados do cache.
 
+Após o treino, copie o artefato de inferência para versionar o deploy:
+
+```powershell
+New-Item -ItemType Directory -Force artifacts | Out-Null
+Copy-Item models/checkpoints/mlp/mlp_best.pt artifacts/mlp_best.pt
+```
+
 ## Experimentos e Model Registry (MLflow)
 
 Para visualizar os runs, métricas por época (do modelo neural) e o
@@ -60,6 +67,78 @@ Abre em `http://localhost:5000`. O melhor modelo entre todos os candidatos
 (baselines + neural) é automaticamente promovido a **Production** no
 Registry ao final de cada execução do stage `train_and_evaluate`.
 
+## Docker Compose
+
+Serviços: `mlflow` (tracking UI/server), `train` (pipeline de treino) e
+`api` (FastAPI de recomendação).
+
+```powershell
+# sobe MLflow em http://localhost:5000
+docker compose up -d mlflow
+
+# treina (profile train) apontando para o MLflow do compose
+docker compose --profile train run --rm train
+
+# sobe a API em http://localhost:8000 (requer mlp_best.pt local ou em artifacts/)
+docker compose up -d --build api
+```
+
+## API de recomendação
+
+Com o modelo carregado (`MODEL_PATH` ou default
+`models/checkpoints/mlp/mlp_best.pt`):
+
+```powershell
+# local (sem Docker)
+$env:MODEL_PATH = "models/checkpoints/mlp/mlp_best.pt"
+poetry run uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+```
+
+| Endpoint | Descrição |
+|---|---|
+| `GET /health` | Healthcheck (`{"status":"ok"}`) |
+| `GET /recommend/{user_id}?k=10` | Top-k itens para o usuário |
+| `GET /docs` | Swagger UI |
+
+Use o **`visitorid` original do RetailRocket** presente no treino
+(`data/features/train.parquet`), não índices 0, 1, 2… Usuários fora do
+vocabulário retornam **404**.
+
+Exemplos válidos de `user_id` (amostra do treino atual):
+
+`990356`, `1399056`, `90447`, `979664`, `1346730`, `1296675`, `1222911`,
+`954142`, `70597`, `1061274`
+
+Para listar outros IDs locais:
+
+```powershell
+poetry run python -c "import pandas as pd; print(pd.read_parquet('data/features/train.parquet')['visitorid'].drop_duplicates().head(20).tolist())"
+```
+
+Exemplo (local ou Render):
+
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod "http://localhost:8000/recommend/990356?k=5"
+
+# produção
+Invoke-RestMethod https://retailrocket-recommender-api.onrender.com/health
+Invoke-RestMethod "https://retailrocket-recommender-api.onrender.com/recommend/990356?k=5"
+```
+
+## Deploy no Render
+
+1. Rode o pipeline e publique o artefato em `artifacts/mlp_best.pt` (commitado).
+2. No [Render](https://render.com), use **Blueprint** com o `render.yaml` do repo,
+   ou **New → Web Service** a partir da imagem Docker publicada.
+3. Health check path: `/health`.
+4. Env sugeridas: `MODEL_PATH=/app/models/checkpoints/mlp/mlp_best.pt`,
+   `PYTHONUNBUFFERED=1` (`PORT` é injetado pelo Render).
+5. Após o deploy, a URL pública responde em `/health` e `/recommend/{user_id}`.
+
+O free tier pode hibernar após inatividade e tem pouca RAM — a imagem usa
+PyTorch CPU justamente para caber nesse perfil.
+
 ## Testes
 
 ```powershell
@@ -68,9 +147,9 @@ poetry run pytest -v
 
 Cobertura: métricas de avaliação (`hit_rate`, `precision`, `recall`,
 `ndcg`, `mrr`), filtro k-core, split temporal, encoders de ID, os 4
-recomendadores baseline, as factories de modelo/pré-processador, e os
+recomendadores baseline, as factories de modelo/pré-processador, os
 componentes centrais do pipeline neural (`EarlyStopping`, negative
-sampling do `InteractionDataset`).
+sampling do `InteractionDataset`, checkpoint save/load) e a API FastAPI.
 
 ## Qualidade de código
 
