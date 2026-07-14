@@ -4,7 +4,7 @@ Pré-requisitos: Python 3.11+, [Poetry](https://python-poetry.org/) ≥ 2.3.
 
 ```powershell
 # clona o repositório
-git clone <url-do-repositorio>
+git clone https://github.com/LeticiaMalato/Tech-Challenge-2.git
 cd Tech-Challenge-2
 
 # instala dependências (prod + dev)
