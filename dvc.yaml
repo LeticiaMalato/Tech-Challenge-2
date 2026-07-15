@@ -1,0 +1,71 @@
+stages:
+  preprocess_events:
+    cmd: poetry run python -m src.preprocessing.run --source events
+    deps:
+      - data/raw/events.csv
+      - src/preprocessing/run.py
+      - src/preprocessing/events.py
+      - src/preprocessing/factory.py
+      - src/preprocessing/base.py
+      - src/utils/utils.py
+    outs:
+      - data/processed/events.parquet
+
+  preprocess_categories:
+    cmd: poetry run python -m src.preprocessing.run --source categories
+    deps:
+      - data/raw/category_tree.csv
+      - src/preprocessing/run.py
+      - src/preprocessing/categories.py
+      - src/preprocessing/factory.py
+      - src/preprocessing/base.py
+    outs:
+      - data/processed/categories.parquet
+
+  preprocess_item_properties:
+    cmd: poetry run python -m src.preprocessing.run --source item_properties
+    deps:
+      - data/raw/item_properties_part1.csv
+      - data/raw/item_properties_part2.csv
+      - src/preprocessing/run.py
+      - src/preprocessing/item_properties.py
+      - src/preprocessing/factory.py
+      - src/preprocessing/base.py
+      - src/utils/utils.py
+    outs:
+      - data/processed/item_properties.parquet
+
+  feature_eng:
+    cmd: >-
+      poetry run python -m src.feature.run
+      --k ${feature_eng.k}
+      --test-ratio ${feature_eng.test_ratio}
+    deps:
+      - data/processed/events.parquet
+      - data/processed/item_properties.parquet
+      - src/feature/run.py
+      - src/feature/kcore.py
+      - src/feature/temporal_split.py
+      - src/feature/asof_join.py
+      - src/feature/encoders.py
+    params:
+      - feature_eng.k
+      - feature_eng.test_ratio
+    outs:
+      - data/features/train.parquet
+      - data/features/test.parquet
+      - data/features/user_encoder.pkl
+      - data/features/item_encoder.pkl
+
+  train_and_evaluate:
+    cmd: poetry run python -m src.train.run
+    deps:
+      - data/features/train.parquet
+      - data/features/test.parquet
+      - src/train/run.py
+      - src/models/baseline
+      - src/models/neural
+      - src/utils/seed.py
+      - src/config.py
+    outs:
+      - models/checkpoints/mlp/mlp_best.pt

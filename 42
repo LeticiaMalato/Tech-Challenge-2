@@ -1,0 +1,14 @@
+Requirement already satisfied: pyopenssl in C:\Users\pichau\AppData\Local\pypoetry\Cache\virtualenvs\tech-challenge-2-d2F3SHPf-py3.11\Lib\site-packages (22.0.0)
+Collecting pyopenssl
+  Downloading pyopenssl-26.3.0-py3-none-any.whl.metadata (22 kB)
+Requirement already satisfied: cryptography in C:\Users\pichau\AppData\Local\pypoetry\Cache\virtualenvs\tech-challenge-2-d2F3SHPf-py3.11\Lib\site-packages (49.0.0)
+Requirement already satisfied: typing-extensions>=4.9 in C:\Users\pichau\AppData\Local\pypoetry\Cache\virtualenvs\tech-challenge-2-d2F3SHPf-py3.11\Lib\site-packages (from pyopenssl) (4.15.0)
+Requirement already satisfied: cffi>=2.0.0 in C:\Users\pichau\AppData\Local\pypoetry\Cache\virtualenvs\tech-challenge-2-d2F3SHPf-py3.11\Lib\site-packages (from cryptography) (2.0.0)
+Requirement already satisfied: pycparser in C:\Users\pichau\AppData\Local\pypoetry\Cache\virtualenvs\tech-challenge-2-d2F3SHPf-py3.11\Lib\site-packages (from cffi>=2.0.0->cryptography) (3.0)
+Downloading pyopenssl-26.3.0-py3-none-any.whl (56 kB)
+Installing collected packages: pyopenssl
+  Attempting uninstall: pyopenssl
+    Found existing installation: pyOpenSSL 22.0.0
+    Uninstalling pyOpenSSL-22.0.0:
+      Successfully uninstalled pyOpenSSL-22.0.0
+Successfully installed pyopenssl-26.3.0

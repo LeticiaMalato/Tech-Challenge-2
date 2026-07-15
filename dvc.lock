@@ -1,0 +1,188 @@
+schema: '2.0'
+stages:
+  preprocess_events:
+    cmd: poetry run python -m src.preprocessing.run --source events
+    deps:
+    - path: data/raw/events.csv
+      hash: md5
+      md5: fddaf7c1c6a9df23a726500a08ffdd7e
+      size: 94237913
+    - path: src/preprocessing/base.py
+      hash: md5
+      md5: ef8761634b04656223e613029daa797b
+      size: 627
+    - path: src/preprocessing/events.py
+      hash: md5
+      md5: fb0e22556778508ac0bd6218e797b672
+      size: 1473
+    - path: src/preprocessing/factory.py
+      hash: md5
+      md5: 2c25345e44fa76886ee517b58ce25794
+      size: 1142
+    - path: src/preprocessing/run.py
+      hash: md5
+      md5: 4d6e7065912dd5d6ccd891085234b228
+      size: 2535
+    - path: src/utils/utils.py
+      hash: md5
+      md5: 17de61b0d864d0a9d2201f1b5ce6bc43
+      size: 547
+    outs:
+    - path: data/processed/events.parquet
+      hash: md5
+      md5: 65e27274ea84520080aa8895a45c05b9
+      size: 42889033
+  preprocess_categories:
+    cmd: poetry run python -m src.preprocessing.run --source categories
+    deps:
+    - path: data/raw/category_tree.csv
+      hash: md5
+      md5: f0e1eb878ae66209004112f6355d7e83
+      size: 14454
+    - path: src/preprocessing/base.py
+      hash: md5
+      md5: ef8761634b04656223e613029daa797b
+      size: 627
+    - path: src/preprocessing/categories.py
+      hash: md5
+      md5: 52192b3c4ad5b3e3dd95d02d53ee868c
+      size: 826
+    - path: src/preprocessing/factory.py
+      hash: md5
+      md5: 2c25345e44fa76886ee517b58ce25794
+      size: 1142
+    - path: src/preprocessing/run.py
+      hash: md5
+      md5: 4d6e7065912dd5d6ccd891085234b228
+      size: 2535
+    outs:
+    - path: data/processed/categories.parquet
+      hash: md5
+      md5: f8c4063e6491205e683a7c56d4e69755
+      size: 14077
+  preprocess_item_properties:
+    cmd: poetry run python -m src.preprocessing.run --source item_properties
+    deps:
+    - path: data/raw/item_properties_part1.csv
+      hash: md5
+      md5: cb43a0682a1af76f1c1b60f9163ae47b
+      size: 484315749
+    - path: data/raw/item_properties_part2.csv
+      hash: md5
+      md5: e74ec953e7b192920b195dfd82dc2a4e
+      size: 408929907
+    - path: src/preprocessing/base.py
+      hash: md5
+      md5: ef8761634b04656223e613029daa797b
+      size: 627
+    - path: src/preprocessing/factory.py
+      hash: md5
+      md5: 2c25345e44fa76886ee517b58ce25794
+      size: 1142
+    - path: src/preprocessing/item_properties.py
+      hash: md5
+      md5: a46dc2e4b6382e9bad230131b13769b2
+      size: 1359
+    - path: src/preprocessing/run.py
+      hash: md5
+      md5: 4d6e7065912dd5d6ccd891085234b228
+      size: 2535
+    - path: src/utils/utils.py
+      hash: md5
+      md5: 17de61b0d864d0a9d2201f1b5ce6bc43
+      size: 547
+    outs:
+    - path: data/processed/item_properties.parquet
+      hash: md5
+      md5: 912ee444951f3b013e4f8e34c1532695
+      size: 14787816
+  feature_eng:
+    cmd: poetry run python -m src.feature.run --k 5 --test-ratio 0.2
+    deps:
+    - path: data/processed/events.parquet
+      hash: md5
+      md5: 65e27274ea84520080aa8895a45c05b9
+      size: 42889033
+    - path: data/processed/item_properties.parquet
+      hash: md5
+      md5: 912ee444951f3b013e4f8e34c1532695
+      size: 14787816
+    - path: src/feature/asof_join.py
+      hash: md5
+      md5: e9fbe90026191a452e64a97a008a118b
+      size: 2018
+    - path: src/feature/encoders.py
+      hash: md5
+      md5: d64847b53a2165388c7749a946a31f2a
+      size: 4306
+    - path: src/feature/kcore.py
+      hash: md5
+      md5: c540981885a3e868efd35f60ecc78fca
+      size: 1972
+    - path: src/feature/run.py
+      hash: md5
+      md5: 6db5157f09a8f3cf8dc2a68c9455feca
+      size: 4549
+    - path: src/feature/temporal_split.py
+      hash: md5
+      md5: 3efbc034f973f348b46437ad33bf46bf
+      size: 3935
+    params:
+      params.yaml:
+        feature_eng.k: 5
+        feature_eng.test_ratio: 0.2
+    outs:
+    - path: data/features/item_encoder.pkl
+      hash: md5
+      md5: 89bf1f3faec1736e9d8d48ae3bb9fc44
+      size: 431986
+    - path: data/features/test.parquet
+      hash: md5
+      md5: 14f07f9298466997403be7eef3122875
+      size: 923268
+    - path: data/features/train.parquet
+      hash: md5
+      md5: 0b6ea9726af2e37e6aaa0c98e3c2c4e0
+      size: 11089935
+    - path: data/features/user_encoder.pkl
+      hash: md5
+      md5: 68f30bc0f140cc8073daaa6eea72fac6
+      size: 700187
+  train_and_evaluate:
+    cmd: poetry run python -m src.train.run
+    deps:
+    - path: data/features/test.parquet
+      hash: md5
+      md5: 14f07f9298466997403be7eef3122875
+      size: 923268
+    - path: data/features/train.parquet
+      hash: md5
+      md5: 0b6ea9726af2e37e6aaa0c98e3c2c4e0
+      size: 11089935
+    - path: src/config.py
+      hash: md5
+      md5: 7e043c43196ed99bf81506273b4fc6e7
+      size: 1276
+    - path: src/models/baseline
+      hash: md5
+      md5: d36d61a2d51a066ff05bdc7a6995650f.dir
+      size: 87643
+      nfiles: 16
+    - path: src/models/neural
+      hash: md5
+      md5: 0c9cc1456a7c4faf839b7b3e8050923d.dir
+      size: 80778
+      nfiles: 10
+    - path: src/train/run.py
+      hash: md5
+      md5: b291c0dee186964b8e5b8a4b18609841
+      size: 18978
+    - path: src/utils/seed.py
+      hash: md5
+      md5: 3c61b1e562601b185789b26738c705ae
+      size: 636
+    outs:
+    - path: models/checkpoints/mlp/mlp_best.pt
+      hash: md5
+      md5: 0bafdb738c7a3913e684edbb0737f573
+      size: 20895527

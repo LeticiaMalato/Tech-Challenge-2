@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: retailrocket-recommender-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: MODEL_PATH
+        value: /app/models/checkpoints/mlp/mlp_best.pt
+      - key: PYTHONUNBUFFERED
+        value: "1"

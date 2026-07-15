@@ -147,6 +147,16 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# dados brutos e processados (gerenciados pelo DVC)
+data/raw/
+data/processed/
+data/features/
+
+# NÃO ignore arquivos .dvc - eles precisam ir pro Git
+!data/raw.dvc
+!data/processed.dvc
+!*.dvc
+
 # Environments
 .env
 .envrc
@@ -156,6 +166,17 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+#mlflow
+mlruns/
+mlflow.db
+models/checkpoints/
+*.pt
+
+# Artefato de inferência versionado para deploy no Render
+!artifacts/
+!artifacts/.gitkeep
+!artifacts/mlp_best.pt
 
 # Spyder project settings
 .spyderproject
